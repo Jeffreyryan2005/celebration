@@ -201,7 +201,7 @@ Return a JSON array of strings, where each string is a 1-2 sentence compelling i
 }
 
 // Fallback generators ensure 100% reliability under network or quota constraints
-function getFallbackBudget(event: EventDetails): Array<Partial<BudgetItem>> {
+export function getFallbackBudget(event: EventDetails): Array<Partial<BudgetItem>> {
   const total = event.totalBudget || 10000;
   const allocations = DEFAULT_BUDGET_ALLOCATIONS[event.type] || DEFAULT_BUDGET_ALLOCATIONS.birthday;
 
@@ -214,7 +214,7 @@ function getFallbackBudget(event: EventDetails): Array<Partial<BudgetItem>> {
   }));
 }
 
-function getFallbackTimeline(event: EventDetails): Array<Partial<TimelineItem>> {
+export function getFallbackTimeline(event: EventDetails): Array<Partial<TimelineItem>> {
   return [
     { title: 'Secure Event Venue', description: 'Tour top venue options and finalize deposit contract.', dueDate: '6 months before', priority: 'high', category: 'venue' },
     { title: 'Book Primary Caterer', description: 'Schedule menu tastings and specify guest dietary requirements.', dueDate: '5 months before', priority: 'high', category: 'catering' },
@@ -227,7 +227,7 @@ function getFallbackTimeline(event: EventDetails): Array<Partial<TimelineItem>> 
   ];
 }
 
-function getFallbackIdeas(event: EventDetails): string[] {
+export function getFallbackIdeas(event: EventDetails): string[] {
   return [
     `Interactive Welcome Wall: A personalized photo display celebrating memories tailored to your ${event.type}.`,
     `Signature Refreshment Station: Handcrafted mocktails/cocktails reflecting the "${event.theme || 'Celebration'}" theme.`,

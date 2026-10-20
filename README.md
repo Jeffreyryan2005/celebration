@@ -5,7 +5,8 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16.4-black?logo=next.js&logoColor=white)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![Gemini AI](https://img.shields.io/badge/Gemini-2.5_Flash-4285F4?logo=google&logoColor=white)](https://ai.google.dev)
-[![Tests](https://img.shields.io/badge/Tests-120_passing-22c55e?logo=jest&logoColor=white)](/__tests__)
+[![Tests](https://img.shields.io/badge/Tests-177_passing-22c55e?logo=jest&logoColor=white)](/__tests__)
+[![Coverage](https://img.shields.io/badge/Coverage-83.2%25-brightgreen)](/__tests__)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 [![WCAG AA](https://img.shields.io/badge/Accessibility-WCAG_2.1_AA-purple)](https://www.w3.org/WAI/standards-guidelines/wcag/)
 
@@ -120,18 +121,32 @@ npm test
 npm run test:coverage
 ```
 
-### Test Suite Summary (120 Tests Passed Across 12 Suites)
-- `src/__tests__/lib/validators.test.ts` — Zod schema validation, XSS sanitization, length limits
-- `src/__tests__/lib/validators.additional.test.ts` — Edge case inputs, boundary conditions, malicious vectors
+### Test Suite Summary (177 Tests Passed Across 24 Suites — 83.2% Coverage)
+
+#### React Component & User Flow Suites
+- `src/__tests__/app/page.test.tsx` — Landing page persona selector, step navigation, validation (100% coverage)
+- `src/__tests__/app/planner.test.tsx` — Dynamic planner workspace, 5-tab switching, localStorage recovery (95.4% coverage)
+- `src/__tests__/components/BudgetPanel.test.tsx` — Expense tracking, paid state toggling, overbudget alerts, ARIA progressbar
+- `src/__tests__/components/TimelinePanel.test.tsx` — Milestone checkboxes, priority groupings, progress calculations
+- `src/__tests__/components/VendorPanel.test.tsx` — Vendor pipeline management, category filters, contact cards
+- `src/__tests__/components/IdeasPanel.test.tsx` — Theme generator, clipboard copy, custom idea insertion
+- `src/__tests__/components/EventHeader.test.tsx` — Countdown timers, budget displays, print-to-PDF, JSON export
+- `src/__tests__/components/ErrorBoundary.test.tsx` — Uncaught error recovery, user notification, fallback rendering
+- `src/__tests__/components/ChatPanel.test.tsx` — Streaming chat UI, quick prompts, message composition
+
+#### API Route & Integration Suites
+- `src/__tests__/api/generate.test.ts` — Integration testing of `/api/generate` with budget, timeline, and ideas schemas
+- `src/__tests__/api/chat.test.ts` — Integration testing of `/api/chat` with streaming headers and Zod validation
+
+#### Core Logic, Security, & Heuristic Suites
+- `src/__tests__/lib/validators.test.ts` & `validators.additional.test.ts` — Zod schema validation, XSS sanitization, length limits
+- `src/__tests__/lib/gemini.test.ts` & `gemini.additional.test.ts` — Multi-persona prompt engineering, system instructions
+- `src/__tests__/lib/gemini.fallbacks.test.ts` — Deterministic fallback algorithms for budget, timeline, and ideas
 - `src/__tests__/lib/cache.test.ts` — LRU eviction, TTL expiration, cache retrieval
-- `src/__tests__/lib/rateLimit.test.ts` — Sliding window throttling, IP isolation
-- `src/__tests__/lib/rateLimit.additional.test.ts` — Concurrent requests, boundary windows, cache integration
-- `src/__tests__/lib/logger.test.ts` — API key redaction, context sanitization, PII masking
+- `src/__tests__/lib/rateLimit.test.ts` & `rateLimit.additional.test.ts` — Sliding window throttling, concurrency, IP isolation
 - `src/__tests__/lib/security.test.ts` — Injection prevention, Unicode safety, script tag isolation
-- `src/__tests__/lib/gemini.test.ts` — Context prompt construction, event persona mapping
-- `src/__tests__/lib/gemini.additional.test.ts` — Multi-persona prompt validation, pillar completeness
-- `src/__tests__/lib/storage.test.ts` — Currency formatting, countdown math, plan initialization
-- `src/__tests__/lib/storage.additional.test.ts` — LocalStorage persistence, plan CRUD, date mathematics
+- `src/__tests__/lib/logger.test.ts` — API key redaction, context sanitization, PII masking
+- `src/__tests__/lib/storage.test.ts` & `storage.additional.test.ts` — LocalStorage persistence, plan CRUD, date mathematics
 - `src/__tests__/lib/constants.test.ts` — Event types, budget category weights, allocations
 
 ---
@@ -170,7 +185,7 @@ Visit `http://localhost:3000` in your browser.
 | **Code Quality** | Strict TypeScript, zero build warnings, modular architecture, Zod runtime validation, ErrorBoundary containment |
 | **Security** | CSP, HSTS, frame protection, sliding-window rate limiter, regex XSS stripping, server-side secret isolation |
 | **Efficiency** | Chunked token streaming, TTL query caching, React.memo component tree, sub-1 MB footprint |
-| **Testing** | 120 passing automated tests across 12 comprehensive suites covering unit, security, and schema boundaries |
+| **Testing** | 177 passing automated tests across 24 suites (83.2% statement coverage) covering unit, component, integration, and security boundaries |
 | **Accessibility** | Complete ARIA coverage (`role="progressbar"`, `aria-live`, `role="log"`), skip links, WCAG AA contrast |
 | **Problem Alignment** | Dedicated, persona-specific planning logic for Weddings, Birthdays, and Community events with budgets, timelines, vendors, and ideas |
 

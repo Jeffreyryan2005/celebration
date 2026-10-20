@@ -40,7 +40,7 @@ export default function PlannerPage() {
     }
     setPlan(found);
     setLoading(false);
-  }, [id, router]);
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updatePlan = useCallback(
     (updater: (prev: EventPlan) => EventPlan) => {

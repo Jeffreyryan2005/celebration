@@ -9,16 +9,23 @@ interface RateLimitRecord {
 
 const ipHistory = new Map<string, RateLimitRecord>();
 
-// Cleanup stale IP entries periodically
-setInterval(() => {
-  const cutoff = Date.now() - 60_000;
-  for (const [ip, record] of ipHistory.entries()) {
-    record.timestamps = record.timestamps.filter((ts) => ts > cutoff);
-    if (record.timestamps.length === 0) {
-      ipHistory.delete(ip);
+// Cleanup stale IP entries periodically (skip in test environment to prevent open handle leaks)
+if (process.env.NODE_ENV !== 'test') {
+  const timer = setInterval(() => {
+    const cutoff = Date.now() - 60_000;
+    for (const [ip, record] of ipHistory.entries()) {
+      record.timestamps = record.timestamps.filter((ts) => ts > cutoff);
+      if (record.timestamps.length === 0) {
+        ipHistory.delete(ip);
+      }
     }
-  }
-}, 60_000).unref?.();
+  }, 60_000);
+  timer?.unref?.();
+}
+
+export function resetRateLimit(): void {
+  ipHistory.clear();
+}
 
 export interface RateLimitResult {
   success: boolean;

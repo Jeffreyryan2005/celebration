@@ -6,6 +6,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) with [Se
 
 ---
 
+## [1.4.0] - 2026-10-20
+
+### Added
+- **Full UI Component & Integration Testing (177 Tests Across 24 Suites)**:
+  - Added React Component tests: `BudgetPanel.test.tsx`, `TimelinePanel.test.tsx`, `VendorPanel.test.tsx`, `IdeasPanel.test.tsx`, `EventHeader.test.tsx`, `ErrorBoundary.test.tsx`, `ChatPanel.test.tsx`
+  - Added App Route tests: `app/page.test.tsx` (100% coverage), `app/planner/[id]/page.test.tsx` (95.4% coverage)
+  - Added Route Handler Integration tests: `api/generate.test.ts`, `api/chat.test.ts`
+  - Added Gemini fallback unit test suite: `gemini.fallbacks.test.ts`
+  - Elevated overall project statement test coverage from 19.13% to **83.24%** (80.44% branch coverage)
+- Added `resetRateLimit()` utility and guarded timers against leaks in test environments
+
+### Fixed
+- Fixed router dependency re-render cycle in `PlannerPage` `useEffect` hook
+- Exported fallback generators in `gemini.ts` for direct testability and offline resilience
+
+---
+
 ## [1.3.0] - 2026-10-20
 
 ### Added
