@@ -68,10 +68,11 @@ const ChatPanel = memo(function ChatPanel({ plan, updatePlan }: Props) {
       setInput('');
       setIsLoading(true);
 
-      // Build Gemini message history
-      const history = [...messages, userMsg].map((m) => ({
-        role: m.role === 'assistant' ? ('model' as const) : ('user' as const),
-        parts: [{ text: m.content }] as [{ text: string }],
+      // Build Gemini message history (filtering out empty messages)
+      const validMessages = [...messages, userMsg].filter((m) => m.content && m.content.trim().length > 0);
+      const history = validMessages.map((m) => ({
+        role: (m.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
+        parts: [{ text: m.content.trim() }] as [{ text: string }],
       }));
 
       try {

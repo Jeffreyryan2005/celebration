@@ -69,8 +69,8 @@ export interface EventDetails {
   totalBudget: number;
   theme: string;
   description: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ChatMessage {

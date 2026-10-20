@@ -1,64 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { streamChatResponse } from '@/lib/gemini';
-import { EventDetails } from '@/types';
-
-/**
- * Simple in-memory rate limiter (resets on cold start)
- * For production, use Redis or Upstash
- */
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = parseInt(process.env.RATE_LIMIT_RPM || '20', 10);
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now > entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + 60_000 });
-    return true;
-  }
-  if (entry.count >= RATE_LIMIT) return false;
-  entry.count++;
-  return true;
-}
+import { checkRateLimit } from '@/lib/rateLimit';
+import { ChatRequestSchema } from '@/lib/validators';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
-    if (!checkRateLimit(ip)) {
+    // 1. IP extraction and rate limiting
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+               request.headers.get('x-real-ip') ||
+               '127.0.0.1';
+
+    const rateResult = checkRateLimit(ip);
+    if (!rateResult.success) {
+      logger.warn(`Rate limit exceeded for IP ${ip}`);
       return NextResponse.json(
         { error: 'Too many requests. Please wait a moment before sending another message.' },
-        { status: 429 }
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(rateResult.reset),
+            'X-RateLimit-Limit': String(rateResult.limit),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': String(rateResult.reset),
+          },
+        }
       );
     }
 
-    const body = await request.json();
-    const { messages, event } = body as {
-      messages: Array<{ role: 'user' | 'model'; parts: [{ text: string }] }>;
-      event?: Partial<EventDetails>;
-    };
-
-    // Input validation
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json({ error: 'Invalid request: messages array is required' }, { status: 400 });
+    // 2. Body parsing and schema validation
+    const rawBody = await request.json().catch(() => null);
+    if (!rawBody) {
+      return NextResponse.json({ error: 'Invalid JSON request body' }, { status: 400 });
     }
 
-    // Sanitize: limit history to last 20 messages to avoid token overflow
-    const trimmedMessages = messages.slice(-20);
-
-    // Validate each message
-    for (const msg of trimmedMessages) {
-      if (!['user', 'model'].includes(msg.role)) {
-        return NextResponse.json({ error: 'Invalid message role' }, { status: 400 });
-      }
-      if (typeof msg.parts?.[0]?.text !== 'string') {
-        return NextResponse.json({ error: 'Invalid message format' }, { status: 400 });
-      }
-      // Sanitize message length
-      msg.parts[0].text = msg.parts[0].text.slice(0, 4000);
+    const parseResult = ChatRequestSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      const errorMsg = parseResult.error.issues.map((i) => i.message).join(', ');
+      return NextResponse.json({ error: `Validation error: ${errorMsg}` }, { status: 400 });
     }
 
-    const stream = await streamChatResponse(trimmedMessages, event);
+    const { messages, event } = parseResult.data;
+
+    // 3. Convert messages format for Gemini
+    const formattedMessages = messages.map((m) => ({
+      role: (m.role === 'assistant' ? 'model' : m.role) as 'user' | 'model',
+      parts: m.parts.map((p) => ({ text: p.text })) as [{ text: string }],
+    }));
+
+    // 4. Stream response
+    const stream = await streamChatResponse(formattedMessages, event);
 
     return new NextResponse(stream, {
       headers: {
@@ -66,11 +57,13 @@ export async function POST(request: NextRequest) {
         'X-Content-Type-Options': 'nosniff',
         'Cache-Control': 'no-cache, no-transform',
         'Transfer-Encoding': 'chunked',
+        'X-RateLimit-Limit': String(rateResult.limit),
+        'X-RateLimit-Remaining': String(rateResult.remaining),
       },
     });
   } catch (err) {
-    console.error('Chat API error:', err);
-    const message = err instanceof Error ? err.message : 'An unexpected error occurred';
+    logger.error('Chat API Error:', err);
+    const message = err instanceof Error ? err.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

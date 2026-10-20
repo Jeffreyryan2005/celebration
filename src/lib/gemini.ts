@@ -1,10 +1,16 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { EventDetails, EventType } from '@/types';
+import { EventDetails, EventType, BudgetItem, TimelineItem } from '@/types';
+import { aiResponseCache } from './cache';
+import { logger } from './logger';
+import { DEFAULT_BUDGET_ALLOCATIONS } from './constants';
+
+const PRIMARY_MODEL = 'gemini-2.5-flash';
+const FALLBACK_MODEL = 'gemini-flash-latest';
 
 /**
- * Initialise the Gemini client (server-side only)
+ * Initialize the Gemini client (server-side only)
  */
-function getGeminiClient() {
+function getGeminiClient(): GoogleGenerativeAI {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not configured');
@@ -13,58 +19,67 @@ function getGeminiClient() {
 }
 
 /**
- * Build a rich system prompt tailored to the current event context
+ * Build an event-contextualized system prompt
  */
 export function buildSystemPrompt(event?: Partial<EventDetails>): string {
-  const eventContext = event
-    ? `The user is planning a ${event.type} called "${event.name}" on ${event.date || 'an upcoming date'} with a budget of $${event.totalBudget?.toLocaleString() || 'TBD'} for ${event.guestCount || 'an unknown number of'} guests. The venue is "${event.venue || 'TBD'}" and the theme is "${event.theme || 'TBD'}".`
-    : 'The user has not yet specified their event details.';
+  const eventContext = event && event.type
+    ? `The user is planning a ${event.type} called "${event.name || 'Celebration'}" on ${event.date || 'an upcoming date'} with a budget of $${event.totalBudget?.toLocaleString() || '10,000'} for ${event.guestCount || 50} guests. Venue: "${event.venue || 'TBD'}". Theme: "${event.theme || 'TBD'}".`
+    : 'The user has not yet specified their complete event details.';
 
-  return `You are CelebrationAI, an expert AI event planning assistant. You help users organize weddings, birthdays, corporate events, community gatherings, anniversaries, and graduations.
+  return `You are CelebrationAI, an expert AI event planning assistant. You specialize in weddings, birthdays, corporate events, community festivals, anniversaries, and graduations.
 
+Context:
 ${eventContext}
 
-Your core capabilities:
-1. **Budget Planning**: Help allocate budgets across categories (venue, catering, decoration, photography, music, transportation, invitations, attire, gifts, miscellaneous). Always provide specific dollar amounts and percentages.
-2. **Timeline Generation**: Create detailed, actionable timelines with milestones (e.g., "6 months before: Book venue", "3 months before: Send invitations").
-3. **Vendor Guidance**: Recommend vendor types, what to look for, typical price ranges, and questions to ask vendors.
-4. **Personalized Ideas**: Suggest themes, décor concepts, catering menus, entertainment ideas, and unique touches based on the event type and guest preferences.
-5. **Problem Solving**: Help troubleshoot planning challenges like budget overruns, vendor cancellations, or last-minute changes.
+Your core pillars of assistance:
+1. **Budget Planning**: Dynamic allocation across venue, catering, decoration, photography, music, transportation, invitations, attire, gifts, and emergency reserve. Provide realistic line-item estimates and percentage breakdowns.
+2. **Timeline Generation**: Actionable chronological milestones covering 6-12 months before, 1 month before, week of event, and event day execution.
+3. **Vendor Guidance**: Recommend vendor questions, negotiation tips, typical contract clauses, and evaluation criteria.
+4. **Personalized Ideas**: Innovative themes, interactive guest experiences, menu concepts, and memorable touches aligned with the specific celebration type.
+5. **Practical Problem Solving**: Contingency planning, rain options, dietary accommodations, and cost reduction strategies without sacrificing quality.
 
 Response guidelines:
-- Be warm, encouraging, and professional
-- Provide specific, actionable advice rather than vague suggestions
-- When giving budgets, always specify amounts (not just percentages)
-- Use bullet points and numbered lists for clarity
-- Ask clarifying questions when needed to personalize advice
-- Format important information with markdown (bold, bullets, headers)
-- Consider cultural sensitivities and inclusivity in your suggestions`;
+- Be warm, encouraging, concise, and structured.
+- Always provide specific numbers and actionable steps.
+- Use markdown formatting with bullet points and bold headers for legibility.
+- Emphasize inclusivity, guest accessibility, and responsible event practices.`;
 }
 
 /**
- * Generate a streaming chat response
+ * Generate a streaming chat response with Gemini 2.5 Flash
  */
 export async function streamChatResponse(
   messages: Array<{ role: 'user' | 'model'; parts: [{ text: string }] }>,
   event?: Partial<EventDetails>
 ): Promise<ReadableStream<Uint8Array>> {
   const genAI = getGeminiClient();
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
-    systemInstruction: buildSystemPrompt(event),
-    generationConfig: {
-      maxOutputTokens: 2048,
-      temperature: 0.7,
-      topP: 0.9,
-    },
-  });
 
-  const chat = model.startChat({ history: messages.slice(0, -1) });
+  let model;
+  try {
+    model = genAI.getGenerativeModel({
+      model: PRIMARY_MODEL,
+      systemInstruction: buildSystemPrompt(event),
+      generationConfig: {
+        maxOutputTokens: 2048,
+        temperature: 0.7,
+        topP: 0.9,
+      },
+    });
+  } catch {
+    model = genAI.getGenerativeModel({
+      model: FALLBACK_MODEL,
+      systemInstruction: buildSystemPrompt(event),
+    });
+  }
+
+  const history = messages.slice(0, -1);
   const lastMessage = messages[messages.length - 1];
+  const chat = model.startChat({ history });
+
   const result = await chat.sendMessageStream(lastMessage.parts[0].text);
 
   const encoder = new TextEncoder();
-  const stream = new ReadableStream<Uint8Array>({
+  return new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
         for await (const chunk of result.stream) {
@@ -75,80 +90,152 @@ export async function streamChatResponse(
         }
         controller.close();
       } catch (err) {
+        logger.error('Stream error:', err);
         controller.error(err);
       }
     },
   });
-
-  return stream;
 }
 
 /**
- * Generate a timeline for an event (non-streaming)
+ * Generate a timeline for an event (structured JSON output)
  */
 export async function generateTimeline(event: EventDetails): Promise<string> {
-  const genAI = getGeminiClient();
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const cacheKey = `timeline:${event.type}:${event.guestCount}:${event.totalBudget}:${event.theme}`;
+  const cached = aiResponseCache.get(cacheKey);
+  if (cached) return cached;
 
-  const prompt = `Create a detailed planning timeline for a ${event.type} event called "${event.name}" scheduled for ${event.date} with ${event.guestCount} guests and a budget of $${event.totalBudget?.toLocaleString()}.
+  try {
+    const genAI = getGeminiClient();
+    const model = genAI.getGenerativeModel({
+      model: PRIMARY_MODEL,
+      generationConfig: {
+        responseMimeType: 'application/json',
+        temperature: 0.6,
+      },
+    });
 
-Return a JSON array of timeline items, each with:
-{
-  "title": "Task name",
-  "description": "Detailed description of what needs to be done",
-  "dueDate": "relative time like '6 months before' or '1 week before'",
-  "priority": "high|medium|low",
-  "category": "venue|catering|decoration|photography|music|transportation|invitations|attire|gifts|miscellaneous|general"
-}
+    const prompt = `Generate a comprehensive planning timeline for a ${event.type} event named "${event.name}" with ${event.guestCount} guests and a total budget of $${event.totalBudget}.
+Return a JSON array of 12 to 18 milestone items. Each item must have:
+- title: concise action title
+- description: clear explanation
+- dueDate: relative time (e.g. "6 months before", "3 months before", "2 weeks before", "Day of Event")
+- priority: "high" | "medium" | "low"
+- category: "venue" | "catering" | "decoration" | "photography" | "music" | "transportation" | "invitations" | "attire" | "gifts" | "miscellaneous"`;
 
-Include at least 15-20 items covering the full planning journey. Return ONLY valid JSON, no markdown.`;
-
-  const result = await model.generateContent(prompt);
-  return result.response.text();
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    aiResponseCache.set(cacheKey, text);
+    return text;
+  } catch (err) {
+    logger.warn('Gemini timeline generation fallback triggered:', err);
+    return JSON.stringify(getFallbackTimeline(event));
+  }
 }
 
 /**
- * Generate budget allocations for an event (non-streaming)
+ * Generate budget allocations for an event (structured JSON output)
  */
 export async function generateBudget(event: EventDetails): Promise<string> {
-  const genAI = getGeminiClient();
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const cacheKey = `budget:${event.type}:${event.totalBudget}:${event.guestCount}`;
+  const cached = aiResponseCache.get(cacheKey);
+  if (cached) return cached;
 
-  const prompt = `Create a detailed budget allocation for a ${event.type} with ${event.guestCount} guests and a total budget of $${event.totalBudget?.toLocaleString()}.
+  try {
+    const genAI = getGeminiClient();
+    const model = genAI.getGenerativeModel({
+      model: PRIMARY_MODEL,
+      generationConfig: {
+        responseMimeType: 'application/json',
+        temperature: 0.5,
+      },
+    });
 
-Return a JSON array of budget items, each with:
-{
-  "category": "venue|catering|decoration|photography|music|transportation|invitations|attire|gifts|miscellaneous",
-  "name": "Specific line item name",
-  "estimated": <number in USD>,
-  "notes": "Brief note about this budget item"
-}
+    const prompt = `Generate a realistic budget allocation breakdown for a ${event.type} event named "${event.name}" for ${event.guestCount} guests with a total budget of exactly $${event.totalBudget}.
+Return a JSON array of 8 to 12 line items. Each item must have:
+- category: one of ["venue", "catering", "decoration", "photography", "music", "transportation", "invitations", "attire", "gifts", "miscellaneous"]
+- name: specific vendor or item name
+- estimated: dollar amount as number (sum should closely match ${event.totalBudget})
+- notes: practical tips or context`;
 
-Ensure the total of all estimated values equals exactly $${event.totalBudget?.toLocaleString()}.
-Include 10-15 specific line items. Return ONLY valid JSON, no markdown.`;
-
-  const result = await model.generateContent(prompt);
-  return result.response.text();
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    aiResponseCache.set(cacheKey, text);
+    return text;
+  } catch (err) {
+    logger.warn('Gemini budget generation fallback triggered:', err);
+    return JSON.stringify(getFallbackBudget(event));
+  }
 }
 
 /**
- * Generate personalized event ideas
+ * Generate personalized event ideas (structured JSON output)
  */
 export async function generateIdeas(event: EventDetails): Promise<string> {
-  const genAI = getGeminiClient();
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const cacheKey = `ideas:${event.type}:${event.theme}:${event.guestCount}`;
+  const cached = aiResponseCache.get(cacheKey);
+  if (cached) return cached;
 
-  const prompt = `Generate 10 creative, personalized ideas for a ${event.type} event with theme "${event.theme || 'to be decided'}" for ${event.guestCount} guests.
+  try {
+    const genAI = getGeminiClient();
+    const model = genAI.getGenerativeModel({
+      model: PRIMARY_MODEL,
+      generationConfig: {
+        responseMimeType: 'application/json',
+        temperature: 0.8,
+      },
+    });
 
-Include ideas for:
-- Theme & décor concepts
-- Unique entertainment
-- Special touches and personal moments
-- Catering/menu highlights
-- Guest experience enhancements
+    const prompt = `Generate 8 to 10 creative, personalized ideas for a ${event.type} event named "${event.name}" with theme "${event.theme || 'Joyful Celebration'}" for ${event.guestCount} guests.
+Include concepts for theme immersion, unique guest experiences, signature drinks/food, decor focal points, and entertainment.
+Return a JSON array of strings, where each string is a 1-2 sentence compelling idea.`;
 
-Return a JSON array of strings, each a concise but vivid idea (1-2 sentences). Return ONLY valid JSON, no markdown.`;
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    aiResponseCache.set(cacheKey, text);
+    return text;
+  } catch (err) {
+    logger.warn('Gemini ideas generation fallback triggered:', err);
+    return JSON.stringify(getFallbackIdeas(event));
+  }
+}
 
-  const result = await model.generateContent(prompt);
-  return result.response.text();
+// Fallback generators ensure 100% reliability under network or quota constraints
+function getFallbackBudget(event: EventDetails): Array<Partial<BudgetItem>> {
+  const total = event.totalBudget || 10000;
+  const allocations = DEFAULT_BUDGET_ALLOCATIONS[event.type] || DEFAULT_BUDGET_ALLOCATIONS.birthday;
+
+  return Object.entries(allocations).map(([cat, pct]) => ({
+    category: cat as any,
+    name: `${cat.charAt(0).toUpperCase() + cat.slice(1)} Package`,
+    estimated: Math.round((total * (pct || 10)) / 100),
+    actual: 0,
+    notes: `Recommended ${pct}% allocation for ${event.type}`,
+  }));
+}
+
+function getFallbackTimeline(event: EventDetails): Array<Partial<TimelineItem>> {
+  return [
+    { title: 'Secure Event Venue', description: 'Tour top venue options and finalize deposit contract.', dueDate: '6 months before', priority: 'high', category: 'venue' },
+    { title: 'Book Primary Caterer', description: 'Schedule menu tastings and specify guest dietary requirements.', dueDate: '5 months before', priority: 'high', category: 'catering' },
+    { title: 'Hire Photographer / Videographer', description: 'Review portfolios and confirm coverage hours.', dueDate: '4 months before', priority: 'medium', category: 'photography' },
+    { title: 'Send Invitations & RSVP Link', description: 'Distribute digital or printed invitations with RSVP deadline.', dueDate: '2 months before', priority: 'high', category: 'invitations' },
+    { title: 'Finalize Décor & Floral Concepts', description: 'Order centerpieces, lighting, and stage rentals.', dueDate: '1 month before', priority: 'medium', category: 'decoration' },
+    { title: 'DJ / Entertainment Playlist Alignment', description: 'Coordinate key songs, speeches, and timing schedule.', dueDate: '2 weeks before', priority: 'medium', category: 'music' },
+    { title: 'Final Headcount & Seating Chart', description: 'Submit guaranteed guest count to caterer and venue.', dueDate: '1 week before', priority: 'high', category: 'catering' },
+    { title: 'Day-of Coordination & Vendor Check-in', description: 'Review master timeline with all vendor leads.', dueDate: 'Day of Event', priority: 'high', category: 'miscellaneous' },
+  ];
+}
+
+function getFallbackIdeas(event: EventDetails): string[] {
+  return [
+    `Interactive Welcome Wall: A personalized photo display celebrating memories tailored to your ${event.type}.`,
+    `Signature Refreshment Station: Handcrafted mocktails/cocktails reflecting the "${event.theme || 'Celebration'}" theme.`,
+    `Curated Acoustic Prelude: Live music playing soft welcoming melodies as guests arrive.`,
+    `Digital Memory Capsule: QR codes on tables where guests can instantly upload candid photos to a live shared gallery.`,
+    `Ambient Kinetic Lighting: Warm fairy lights and uplighting synchronized with key milestones of the evening.`,
+    `Gourmet Late-Night Bites: Miniature sliders, street tacos, or artisanal dessert shooters for the final hour.`,
+    `Customized Keepsake Favors: Locally sourced treats or personalized succulents as a thank-you token for attendees.`,
+    `Interactive Group Toast: A coordinated moment honoring the hosts, VIPs, or community contributors.`,
+  ];
 }
