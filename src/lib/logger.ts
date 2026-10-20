@@ -8,12 +8,12 @@ function sanitize(data: unknown): unknown {
     return data.replace(/(AIza[0-9A-Za-z-_]{35}|AQ\.[0-9A-Za-z-_]{35,})/g, '[REDACTED_API_KEY]');
   }
   if (typeof data === 'object' && data !== null) {
-    const copy: any = Array.isArray(data) ? [] : {};
+    const copy: Record<string, unknown> | unknown[] = Array.isArray(data) ? [] : {};
     for (const [key, val] of Object.entries(data)) {
       if (/key|secret|password|token/i.test(key)) {
-        copy[key] = '[REDACTED]';
+        (copy as Record<string, unknown>)[key] = '[REDACTED]';
       } else {
-        copy[key] = sanitize(val);
+        (copy as Record<string, unknown>)[key] = sanitize(val);
       }
     }
     return copy;
