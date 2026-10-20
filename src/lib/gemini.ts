@@ -206,7 +206,7 @@ function getFallbackBudget(event: EventDetails): Array<Partial<BudgetItem>> {
   const allocations = DEFAULT_BUDGET_ALLOCATIONS[event.type] || DEFAULT_BUDGET_ALLOCATIONS.birthday;
 
   return Object.entries(allocations).map(([cat, pct]) => ({
-    category: cat as any,
+    category: cat as BudgetItem['category'],
     name: `${cat.charAt(0).toUpperCase() + cat.slice(1)} Package`,
     estimated: Math.round((total * (pct || 10)) / 100),
     actual: 0,

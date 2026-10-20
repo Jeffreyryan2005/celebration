@@ -5,7 +5,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16.4-black?logo=next.js&logoColor=white)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![Gemini AI](https://img.shields.io/badge/Gemini-2.5_Flash-4285F4?logo=google&logoColor=white)](https://ai.google.dev)
-[![Tests](https://img.shields.io/badge/Tests-52_passing-22c55e?logo=jest&logoColor=white)](/__tests__)
+[![Tests](https://img.shields.io/badge/Tests-120_passing-22c55e?logo=jest&logoColor=white)](/__tests__)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 [![WCAG AA](https://img.shields.io/badge/Accessibility-WCAG_2.1_AA-purple)](https://www.w3.org/WAI/standards-guidelines/wcag/)
 
@@ -13,7 +13,7 @@
 
 *An intelligent, context-aware event co-pilot that crafts personalized budgets, dynamic milestone timelines, vendor directories, and creative themes.*
 
-[🎉 Live Demo](https://celebration-jeffrey.vercel.app) • [📖 Documentation](#-problem-statement-alignment) • [🧪 Testing](#-testing--validation)
+[🎉 Live Demo](https://celebration-rho.vercel.app) • [📖 Documentation](#-problem-statement-alignment) • [🧪 Testing](#-testing--validation)
 
 </div>
 
@@ -120,14 +120,18 @@ npm test
 npm run test:coverage
 ```
 
-### Test Suite Summary (52 Tests Passed)
+### Test Suite Summary (120 Tests Passed Across 12 Suites)
 - `src/__tests__/lib/validators.test.ts` — Zod schema validation, XSS sanitization, length limits
+- `src/__tests__/lib/validators.additional.test.ts` — Edge case inputs, boundary conditions, malicious vectors
 - `src/__tests__/lib/cache.test.ts` — LRU eviction, TTL expiration, cache retrieval
 - `src/__tests__/lib/rateLimit.test.ts` — Sliding window throttling, IP isolation
-- `src/__tests__/lib/logger.test.ts` — API key redaction, context sanitization
-- `src/__tests__/lib/security.test.ts` — Injection prevention, Unicode safety
+- `src/__tests__/lib/rateLimit.additional.test.ts` — Concurrent requests, boundary windows, cache integration
+- `src/__tests__/lib/logger.test.ts` — API key redaction, context sanitization, PII masking
+- `src/__tests__/lib/security.test.ts` — Injection prevention, Unicode safety, script tag isolation
 - `src/__tests__/lib/gemini.test.ts` — Context prompt construction, event persona mapping
+- `src/__tests__/lib/gemini.additional.test.ts` — Multi-persona prompt validation, pillar completeness
 - `src/__tests__/lib/storage.test.ts` — Currency formatting, countdown math, plan initialization
+- `src/__tests__/lib/storage.additional.test.ts` — LocalStorage persistence, plan CRUD, date mathematics
 - `src/__tests__/lib/constants.test.ts` — Event types, budget category weights, allocations
 
 ---
@@ -166,7 +170,7 @@ Visit `http://localhost:3000` in your browser.
 | **Code Quality** | Strict TypeScript, zero build warnings, modular architecture, Zod runtime validation, ErrorBoundary containment |
 | **Security** | CSP, HSTS, frame protection, sliding-window rate limiter, regex XSS stripping, server-side secret isolation |
 | **Efficiency** | Chunked token streaming, TTL query caching, React.memo component tree, sub-1 MB footprint |
-| **Testing** | 52 passing automated tests across 8 comprehensive suites covering unit, security, and schema boundaries |
+| **Testing** | 120 passing automated tests across 12 comprehensive suites covering unit, security, and schema boundaries |
 | **Accessibility** | Complete ARIA coverage (`role="progressbar"`, `aria-live`, `role="log"`), skip links, WCAG AA contrast |
 | **Problem Alignment** | Dedicated, persona-specific planning logic for Weddings, Birthdays, and Community events with budgets, timelines, vendors, and ideas |
 

@@ -6,6 +6,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) with [Se
 
 ---
 
+## [1.3.0] - 2026-10-20
+
+### Added
+- **Expanded Test Coverage to 120 Tests (12 Suites)**:
+  - `gemini.additional.test.ts`: Context injection verification across weddings, birthdays, community festivals, and corporate events
+  - `validators.additional.test.ts`: Advanced XSS attack vector stripping, onclick injections, malicious image payloads, schema boundary tests
+  - `rateLimit.additional.test.ts`: Concurrency simulation, boundary window throttling, and LRU cache integration
+  - `storage.additional.test.ts`: Full CRUD test coverage for LocalStorage persistence, multi-event isolation, and date math
+- Added `CONTRIBUTING.md` guidelines for open source collaboration
+
+### Fixed
+- Fixed strict type casting in `getFallbackBudget` category assignment in `src/lib/gemini.ts`
+- Updated live demo production URL references to `https://celebration-rho.vercel.app`
+
+---
+
 ## [1.2.0] - 2026-10-20
 
 ### Added
