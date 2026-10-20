@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import IdeasPanel from '@/components/IdeasPanel';
 import { EventPlan } from '@/types';
 
@@ -74,7 +74,9 @@ describe('IdeasPanel component', () => {
     const copyBtns = screen.getAllByRole('button', { name: /copy idea/i });
     expect(copyBtns.length).toBe(2);
 
-    fireEvent.click(copyBtns[0]);
+    await act(async () => {
+      fireEvent.click(copyBtns[0]);
+    });
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(mockPlan.ideas[0]);
   });
 });

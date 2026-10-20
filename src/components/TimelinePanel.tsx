@@ -2,6 +2,7 @@
 
 import { useState, memo, useCallback } from 'react';
 import { EventPlan, TimelineItem } from '@/types';
+import { logger } from '@/lib/logger';
 import { v4 as uuidv4 } from 'uuid';
 
 interface Props {
@@ -47,7 +48,7 @@ const TimelinePanel = memo(function TimelinePanel({ plan, updatePlan }: Props) {
         updatePlan((prev) => ({ ...prev, timeline: items }));
       }
     } catch (err) {
-      console.error('Timeline generation failed:', err);
+      logger.error('Timeline generation failed:', err);
     } finally {
       setIsGenerating(false);
     }

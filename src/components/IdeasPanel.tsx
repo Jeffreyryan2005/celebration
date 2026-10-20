@@ -2,6 +2,7 @@
 
 import { useState, memo, useCallback } from 'react';
 import { EventPlan } from '@/types';
+import { logger } from '@/lib/logger';
 
 interface Props {
   plan: EventPlan;
@@ -32,7 +33,7 @@ const IdeasPanel = memo(function IdeasPanel({ plan, updatePlan }: Props) {
         }));
       }
     } catch (err) {
-      console.error('Ideas generation failed:', err);
+      logger.error('Ideas generation failed:', err);
     } finally {
       setIsGenerating(false);
     }

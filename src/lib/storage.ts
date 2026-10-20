@@ -1,5 +1,6 @@
 import { EventPlan, EventDetails } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
+import { logger } from './logger';
 
 const STORAGE_KEY = 'celebration-planner-data';
 
@@ -32,7 +33,7 @@ export function savePlan(plan: EventPlan): void {
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(plans));
   } catch (err) {
-    console.error('Failed to save plan:', err);
+    logger.error('Failed to save plan:', err);
   }
 }
 

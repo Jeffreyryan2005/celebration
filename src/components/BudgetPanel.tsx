@@ -4,6 +4,7 @@ import { useState, memo, useCallback } from 'react';
 import { EventPlan, BudgetItem, BudgetCategory } from '@/types';
 import { BUDGET_CATEGORIES } from '@/lib/constants';
 import { formatCurrency } from '@/lib/storage';
+import { logger } from '@/lib/logger';
 import { v4 as uuidv4 } from 'uuid';
 
 interface Props {
@@ -53,7 +54,7 @@ const BudgetPanel = memo(function BudgetPanel({ plan, updatePlan }: Props) {
         updatePlan((prev) => ({ ...prev, budget: items }));
       }
     } catch (err) {
-      console.error('Budget generation failed:', err);
+      logger.error('Budget generation failed:', err);
     } finally {
       setIsGenerating(false);
     }

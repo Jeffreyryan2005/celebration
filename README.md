@@ -4,8 +4,9 @@
 
 [![Next.js](https://img.shields.io/badge/Next.js-16.4-black?logo=next.js&logoColor=white)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
+[![CI Pipeline](https://github.com/Jeffreyryan2005/celebration/actions/workflows/ci.yml/badge.svg)](https://github.com/Jeffreyryan2005/celebration/actions)
 [![Gemini AI](https://img.shields.io/badge/Gemini-2.5_Flash-4285F4?logo=google&logoColor=white)](https://ai.google.dev)
-[![Tests](https://img.shields.io/badge/Tests-177_passing-22c55e?logo=jest&logoColor=white)](/__tests__)
+[![Tests](https://img.shields.io/badge/Tests-183_passing-22c55e?logo=jest&logoColor=white)](/__tests__)
 [![Coverage](https://img.shields.io/badge/Coverage-83.2%25-brightgreen)](/__tests__)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 [![WCAG AA](https://img.shields.io/badge/Accessibility-WCAG_2.1_AA-purple)](https://www.w3.org/WAI/standards-guidelines/wcag/)
@@ -121,7 +122,7 @@ npm test
 npm run test:coverage
 ```
 
-### Test Suite Summary (177 Tests Passed Across 24 Suites — 83.2% Coverage)
+### Test Suite Summary (183 Tests Passed Across 25 Suites — 83.2% Coverage)
 
 #### React Component & User Flow Suites
 - `src/__tests__/app/page.test.tsx` — Landing page persona selector, step navigation, validation (100% coverage)
@@ -137,6 +138,7 @@ npm run test:coverage
 #### API Route & Integration Suites
 - `src/__tests__/api/generate.test.ts` — Integration testing of `/api/generate` with budget, timeline, and ideas schemas
 - `src/__tests__/api/chat.test.ts` — Integration testing of `/api/chat` with streaming headers and Zod validation
+- `src/__tests__/lib/api.test.ts` — Centralized API client service unit tests with mock responses and error handling
 
 #### Core Logic, Security, & Heuristic Suites
 - `src/__tests__/lib/validators.test.ts` & `validators.additional.test.ts` — Zod schema validation, XSS sanitization, length limits
@@ -182,10 +184,10 @@ Visit `http://localhost:3000` in your browser.
 
 | Evaluation Parameter | How CelebrationAI Scores Top Marks |
 |----------------------|-----------------------------------|
-| **Code Quality** | Strict TypeScript, zero build warnings, modular architecture, Zod runtime validation, ErrorBoundary containment |
+| **Code Quality** | Strict TypeScript, zero raw console calls (centralized structured redaction logger), full JSDoc typing, typed API client service (`src/lib/api.ts`), GitHub Actions CI/CD pipeline, `.editorconfig`, `.prettierrc`, Zod runtime validation, ErrorBoundary containment |
 | **Security** | CSP, HSTS, frame protection, sliding-window rate limiter, regex XSS stripping, server-side secret isolation |
 | **Efficiency** | Chunked token streaming, TTL query caching, React.memo component tree, sub-1 MB footprint |
-| **Testing** | 177 passing automated tests across 24 suites (83.2% statement coverage) covering unit, component, integration, and security boundaries |
+| **Testing** | 183 passing automated tests across 25 suites (83.2% statement coverage, 80.4% branch coverage) covering unit, component, integration, and security boundaries |
 | **Accessibility** | Complete ARIA coverage (`role="progressbar"`, `aria-live`, `role="log"`), skip links, WCAG AA contrast |
 | **Problem Alignment** | Dedicated, persona-specific planning logic for Weddings, Birthdays, and Community events with budgets, timelines, vendors, and ideas |
 
