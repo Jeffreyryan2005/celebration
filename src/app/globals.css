@@ -50,16 +50,6 @@
 .typing-dot:nth-child(2) { animation-delay: 0.2s; }
 .typing-dot:nth-child(3) { animation-delay: 0.4s; }
 
-/* Progress bar animation */
-@keyframes progressFill {
-  from { width: 0%; }
-  to { width: var(--progress); }
-}
-
-.progress-fill {
-  animation: progressFill 0.8s ease forwards;
-}
-
 /* Focus visible ring for accessibility */
 *:focus-visible {
   outline: 2px solid #8b5cf6;
